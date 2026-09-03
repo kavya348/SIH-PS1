@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LunaAlign AI — ISRO Chandrayaan-2 Lunar Image Registration Dashboard (SIH 26166)</title>
+  <meta name="description" content="AI-assisted multi-modal, sun angle and scale invariant image correspondence and registration workstation for Chandrayaan-2 OHRC, TMC and IIRS lunar datasets.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2306b6d4'><circle cx='12' cy='12' r='10'/></svg>">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- =========================================================================
+         SIDEBAR: COMPACT SPACE MISSION CONTROL
+         ========================================================================= -->
+    <aside class="sidebar">
+      
+      <!-- Brand & Mission Header -->
+      <div class="sidebar-brand">
+        <div class="brand-icon-wrapper">
+          <!-- Chandrayaan-2 Lunar Orbiter Custom SVG -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-dasharray="2 3"/>
+            <circle cx="12" cy="12" r="3.5" fill="currentColor"/>
+            <path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke-linecap="round"/>
+            <path d="M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <div class="brand-title">LunaAlign AI</div>
+          <div class="brand-subtitle">SIH26166 Registration Dashboard</div>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-tab="raw-imagery" id="navRawImagery">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+          <span>Raw Imagery</span>
+        </button>
+
+        <button class="nav-item" data-tab="diagnostics" id="navDiagnostics">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="22" y1="12" x2="18" y2="12"></line>
+            <line x1="6" y1="12" x2="2" y2="12"></line>
+            <line x1="12" y1="6" x2="12" y2="2"></line>
+            <line x1="12" y1="22" x2="12" y2="18"></line>
+          </svg>
+          <span>Diagnostics & Explanations</span>
+        </button>
+
+        <button class="nav-item" data-tab="registration-overlay" id="navRegistrationOverlay">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+            <polyline points="2 17 12 22 22 17"></polyline>
+            <polyline points="2 12 12 17 22 12"></polyline>
+          </svg>
+          <span>Registration Overlay</span>
+        </button>
+      </nav>
+
+      <!-- Run Pipeline Action Button -->
+      <div class="pipeline-action-box">
+        <button class="btn-run-pipeline" id="btnSidebarRunPipeline">
+          <svg viewBox="0 0 24 24">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          <span>Run Pipeline</span>
+        </button>
+        <button class="btn-sample-dataset" id="btnLoadSampleDataset">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Load Chandrayaan-2 Dataset</span>
+        </button>
+      </div>
+
+      <!-- Vertical Pipeline Timeline Tracker -->
+      <div class="pipeline-status-card">
+        <div class="timeline-header">
+          <div class="timeline-title">
+            <span class="live-dot"></span>
+            <span>Pipeline Status</span>
+          </div>
+          <span class="timeline-badge" id="pipelineTimelineBadge">ISRO CORE</span>
+        </div>
+
+        <div class="timeline-list">
+          <div class="timeline-step" id="step-0">
+            <div class="step-marker">01</div>
+            <div class="step-label">Raw Ingestion</div>
+          </div>
+          <div class="timeline-step" id="step-1">
+            <div class="step-marker">02</div>
+            <div class="step-label">Mathematical Extraction</div>
+          </div>
+          <div class="timeline-step" id="step-2">
+            <div class="step-marker">03</div>
+            <div class="step-label">Geometric Verification</div>
+          </div>
+          <div class="timeline-step" id="step-3">
+            <div class="step-marker">04</div>
+            <div class="step-label">Transform Modeling</div>
+          </div>
+          <div class="timeline-step" id="step-4">
+            <div class="step-marker">05</div>
+            <div class="step-label">Telemetry Assembly</div>
+          </div>
+          <div class="timeline-step" id="step-5">
+            <div class="step-marker">06</div>
+            <div class="step-label">Complete</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar Footer Status -->
+      <div class="sidebar-footer">
+        <div class="backend-indicator" id="sidebarBackendIndicator">
+          <span class="status-bulb"></span>
+          <span id="sidebarBackendText">Backend: Autonomous Mode</span>
+        </div>
+        <span>v2.4-SIH</span>
+      </div>
+
+    </aside>
+
+    <!-- =========================================================================
+         MAIN CONTENT WRAPPER
+         ========================================================================= -->
+    <main class="main-wrapper">
+      
+      <!-- Top Mission Header -->
+      <header class="top-header">
+        <div class="header-left">
+          <h1 class="page-title" id="topPageTitle">Source & Reference Input</h1>
+          <p class="page-subtitle" id="topPageSubtitle">Upload lunar imagery for correspondence and registration</p>
+        </div>
+
+        <!-- Telemetry HUD & Status -->
+        <div class="header-telemetry">
+          <div class="telemetry-chip">
+            <span class="telemetry-label">RMSE:</span>
+            <span class="telemetry-val highlight" id="headerRmseVal">-- px</span>
+          </div>
+
+          <div class="telemetry-chip">
+            <span class="telemetry-label">Inliers:</span>
+            <span class="telemetry-val" id="headerInliersVal">--</span>
+          </div>
+
+          <div class="telemetry-chip">
+            <span class="telemetry-label">Model:</span>
+            <span class="telemetry-val" id="headerModelVal">--</span>
+          </div>
+
+          <div class="system-status-pill" id="backendStatusPill">
+            <span class="pulse-ring"></span>
+            <span>SYSTEM READY</span>
+          </div>
+        </div>
+
+        <!-- Header Actions -->
+        <div class="header-actions">
+          <button class="btn-header-action" id="btnExportReport" title="Export scientific telemetry report">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Export Report</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Viewports Container -->
+      <div class="views-viewport">
+        
+        <!-- =====================================================================
+             VIEW 1: RAW IMAGERY INPUT & METADATA
+             ===================================================================== -->
+        <section class="view-panel active" id="view-raw-imagery">
+          
+          <!-- Dual Upload Cards -->
+          <div class="upload-cards-grid">
+            
+            <!-- Source Image (Moving / Unregistered) -->
+            <div class="upload-card">
+              <div class="card-header-bar">
+                <div class="card-title-group">
+                  <h3>Source Image</h3>
+                  <span>Unregistered / Target Moving Frame</span>
+                </div>
+                <span class="card-badge-role source">Moving / Unregistered</span>
+              </div>
+
+              <!-- Drag & Drop Zone -->
+              <div class="dropzone-area" id="sourceDropzone">
+                <input type="file" id="sourceFileInput" accept="image/png, image/jpeg, image/tiff, image/webp" style="display: none;">
+                <div class="dropzone-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                  </svg>
+                </div>
+                <div class="dropzone-text">
+                  <div class="dropzone-primary-text">Drag & drop Source raster or <span class="dropzone-browse-link" onclick="document.getElementById('sourceFileInput').click()">Browse Files</span></div>
+                  <div class="dropzone-subtext">Supported: GeoTIFF, PNG, JPEG (OHRC / TMC / IIRS 16-bit)</div>
+                </div>
+              </div>
+
+              <!-- Selected Image Preview -->
+              <div class="preview-container" id="sourcePreview">
+                <img id="sourcePreviewImg" class="preview-image" alt="Source Lunar Preview">
+                <div class="preview-overlay-specs">
+                  <span class="preview-filename" id="sourceFilename">OHRC_Frame.png</span>
+                  <span class="preview-meta" id="sourceSpecsMeta">600x500 • 2.8 MB</span>
+                </div>
+                <button class="btn-remove-image" id="btnRemoveSource" title="Remove or replace image">✕</button>
+              </div>
+
+              <!-- Quick Action Links -->
+              <div class="card-bottom-actions">
+                <span>Default: Chandrayaan-2 OHRC (0.25m/px)</span>
+                <button class="btn-quick-sample" id="btnQuickSampleSource">Regenerate OHRC Sample</button>
+              </div>
+            </div>
+
+            <!-- Reference Image (Fixed / Reference Target) -->
+            <div class="upload-card">
+              <div class="card-header-bar">
+                <div class="card-title-group">
+                  <h3>Reference Target</h3>
+                  <span>Fixed Base Reference Frame</span>
+                </div>
+                <span class="card-badge-role reference">Fixed / Reference</span>
+              </div>
+
+              <!-- Drag & Drop Zone -->
+              <div class="dropzone-area" id="refDropzone">
+                <input type="file" id="refFileInput" accept="image/png, image/jpeg, image/tiff, image/webp" style="display: none;">
+                <div class="dropzone-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                  </svg>
+                </div>
+                <div class="dropzone-text">
+                  <div class="dropzone-primary-text">Drag & drop Reference raster or <span class="dropzone-browse-link" onclick="document.getElementById('refFileInput').click()">Browse Files</span></div>
+                  <div class="dropzone-subtext">Supported: GeoTIFF, PNG, JPEG (Baseline map / Orthorectified)</div>
+                </div>
+              </div>
+
+              <!-- Selected Image Preview -->
+              <div class="preview-container" id="refPreview">
+                <img id="refPreviewImg" class="preview-image" alt="Reference Lunar Preview">
+                <div class="preview-overlay-specs">
+                  <span class="preview-filename" id="refFilename">TMC_Frame.png</span>
+                  <span class="preview-meta" id="refSpecsMeta">600x500 • 1.9 MB</span>
+                </div>
+                <button class="btn-remove-image" id="btnRemoveRef" title="Remove or replace image">✕</button>
+              </div>
+
+              <!-- Quick Action Links -->
+              <div class="card-bottom-actions">
+                <span>Default: Chandrayaan-2 TMC-2 (5.0m/px)</span>
+                <button class="btn-quick-sample" id="btnQuickSampleRef">Regenerate TMC Sample</button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Lunar Image Metadata Configuration -->
+          <div class="metadata-section">
+            <div class="section-title-row">
+              <div class="section-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                </svg>
+                <span>Instrument & Photometric Metadata</span>
+              </div>
+              <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted);">ISRO SPICE Planetary Kernel Compliant</span>
+            </div>
+
+            <div class="metadata-grid">
+              
+              <div class="meta-field">
+                <label for="metaSensor">Sensor Payload</label>
+                <div class="meta-select-wrap">
+                  <select class="meta-select" id="metaSensor">
+                    <option value="OHRC" selected>OHRC (Optical High Resolution Camera)</option>
+                    <option value="TMC">TMC-2 (Terrain Mapping Camera 2)</option>
+                    <option value="IIRS">IIRS (Imaging Infrared Spectrometer)</option>
+                  </select>
+                  <span class="select-arrow">▼</span>
+                </div>
+              </div>
+
+              <div class="meta-field">
+                <label for="metaImageType">Image Type / Spectral Band</label>
+                <div class="meta-select-wrap">
+                  <select class="meta-select" id="metaImageType">
+                    <option value="Optical" selected>Optical Panchromatic (450 - 900 nm)</option>
+                    <option value="Stereo">Stereo Triplet (Fore-Nadir-Aft)</option>
+                    <option value="Hyperspectral">Hyperspectral VNIR (0.8 - 5.0 µm)</option>
+                  </select>
+                  <span class="select-arrow">▼</span>
+                </div>
+              </div>
+
+              <div class="meta-field">
+                <label for="metaMission">Spacecraft / Mission</label>
+                <div class="meta-select-wrap">
+                  <select class="meta-select" id="metaMission">
+                    <option value="Chandrayaan-2" selected>Chandrayaan-2 Orbiter</option>
+                    <option value="Chandrayaan-3">Chandrayaan-3 Propulsion Module</option>
+                    <option value="LRO">NASA LRO (LROC NAC Benchmark)</option>
+                  </select>
+                  <span class="select-arrow">▼</span>
+                </div>
+              </div>
+
+              <div class="meta-field">
+                <label for="metaSunAngle">Illumination / Sun Angle</label>
+                <div class="meta-select-wrap">
+                  <select class="meta-select" id="metaSunAngle">
+                    <option value="Auto Detect" selected>Auto Detect (Shadow Vector Analysis)</option>
+                    <option value="Low Incidence">Low Incidence (&lt; 20° - Noon Illumination)</option>
+                    <option value="High Incidence">High Incidence (&gt; 45° - Deep Crater Shadows)</option>
+                    <option value="Permanently Shadowed">PSRs (Permanently Shadowed Regions)</option>
+                  </select>
+                  <span class="select-arrow">▼</span>
+                </div>
+              </div>
+
+              <div class="meta-field">
+                <label for="metaScale">Spatial Ground Scale</label>
+                <div class="meta-select-wrap">
+                  <select class="meta-select" id="metaScale">
+                    <option value="Auto Detect" selected>Auto Detect (Cross-Scale Pyramid)</option>
+                    <option value="0.25m">0.25 m / pixel (OHRC High Res)</option>
+                    <option value="5.0m">5.0 m / pixel (TMC-2 Regional)</option>
+                    <option value="80m">80 m / pixel (IIRS Hyperspectral)</option>
+                  </select>
+                  <span class="select-arrow">▼</span>
+                </div>
+              </div>
+
+              <div class="meta-field">
+                <label for="metaCoordinateSystem">Coordinate Reference System</label>
+                <div class="meta-select-wrap">
+                  <select class="meta-select" id="metaCoordinateSystem">
+                    <option value="LME" selected>Lunar Mean Earth / Polar Axis (LME 2005)</option>
+                    <option value="ULCN">ULCN 2005 (Unified Lunar Control Network)</option>
+                    <option value="Planetocentric">Lunar Planetocentric Spherical</option>
+                  </select>
+                  <span class="select-arrow">▼</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Execution Banner & Terminal Output -->
+          <div class="pipeline-cta-banner">
+            <div class="cta-info">
+              <div class="cta-title">Execute AI-Assisted Lunar Registration Pipeline</div>
+              <div class="cta-desc">Runs scale-space feature extraction, illumination-invariant descriptor matching, and RANSAC homography modeling.</div>
+            </div>
+            <button class="btn-big-execute" id="btnRawRunPipeline">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              <span>Run Registration Pipeline</span>
+            </button>
+          </div>
+
+          <!-- Terminal Telemetry Log Window -->
+          <div class="terminal-log-card" id="terminalLogBox">
+            <div class="log-entry">
+              <span class="log-time">[STANDBY]</span>
+              <span class="log-text">LunaAlign Core initialized. Ready to ingest lunar optical frames.</span>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- =====================================================================
+             VIEW 2: DIAGNOSTICS & EXPLANATIONS
+             ===================================================================== -->
+        <section class="view-panel" id="view-diagnostics">
+          
+          <div class="diagnostics-container">
+            
+            <!-- Match Selector Strip -->
+            <div class="match-selector-strip">
+              <span class="selector-label">Verified Matches:</span>
+              <div class="match-chips-row" id="matchChipsRow">
+                <!-- Injected dynamically by diagnostics.js -->
+              </div>
+            </div>
+
+            <!-- Empty State Warning if Pipeline Hasn't Run -->
+            <div class="overlay-empty-state" id="diagEmptyStateMessage" style="display: none; position: static; transform: none; padding: 60px 0;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <h3>Awaiting Registration Execution</h3>
+              <p>Feature visualization, scale uncertainty and local image neighborhood crops will appear after pipeline execution.</p>
+            </div>
+
+            <!-- Diagnostics Content Grid -->
+            <div class="diag-two-col" id="diagContentContainer">
+              
+              <!-- Left Column: Match Information & Local Neighborhood Crop -->
+              <div class="panel-match-info">
+                <div class="diag-card-header">
+                  <div class="diag-title-box">
+                    <h3 id="diagMatchHeading">Match Diagnostics: Inlier #1</h3>
+                    <span id="diagFeatureName">Crater A Primary Central Rim</span>
+                  </div>
+                  <span class="badge-inlier-status inlier" id="diagMatchStatus">INLIER</span>
+                </div>
+
+                <!-- Match Telemetry Table -->
+                <div class="metrics-table-grid">
+                  <div class="metric-row-item">
+                    <span class="m-label">Match ID:</span>
+                    <span class="m-val" id="diagMatchId">#1</span>
+                  </div>
+                  <div class="metric-row-item">
+                    <span class="m-label">Residual Error:</span>
+                    <span class="m-val cyan" id="diagResidualError">0.42 px</span>
+                  </div>
+                  <div class="metric-row-item">
+                    <span class="m-label">Source Coordinates:</span>
+                    <span class="m-val" id="diagSourceCoords">(182, 151) px</span>
+                  </div>
+                  <div class="metric-row-item">
+                    <span class="m-label">Reference Coordinates:</span>
+                    <span class="m-val" id="diagRefCoords">(221, 176) px</span>
+                  </div>
+                  <div class="metric-row-item">
+                    <span class="m-label">Descriptor L2 Dist:</span>
+                    <span class="m-val" id="diagDescriptorDist">0.1420</span>
+                  </div>
+                  <div class="metric-row-item">
+                    <span class="m-label">Scale Ratio (s1/s2):</span>
+                    <span class="m-val cyan" id="diagScaleRatio">1.300x</span>
+                  </div>
+                  <div class="metric-row-item">
+                    <span class="m-label">Source Scale:</span>
+                    <span class="m-val" id="diagSourceScale">1.00x</span>
+                  </div>
+                  <div class="metric-row-item">
+                    <span class="m-label">Reference Scale:</span>
+                    <span class="m-val" id="diagRefScale">0.77x</span>
+                  </div>
+                  <div class="metric-row-item">
+                    <span class="m-label">Source Feature Angle:</span>
+                    <span class="m-val" id="diagSourceAngle">142.4°</span>
+                  </div>
+                  <div class="metric-row-item">
+                    <span class="m-label">Reference Feature Angle:</span>
+                    <span class="m-val" id="diagRefAngle">114.1°</span>
+                  </div>
+                  <div class="metric-row-item">
+                    <span class="m-label">Angle Difference:</span>
+                    <span class="m-val" id="diagAngleDiff">Δ 28.3°</span>
+                  </div>
+                  <div class="metric-row-item">
+                    <span class="m-label">Photometric Sun Invariance:</span>
+                    <span class="m-val cyan">Validated</span>
+                  </div>
+                </div>
+
+                <!-- Feature Similarity Structure Card -->
+                <div class="neighborhood-card">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-family: var(--font-display); font-weight: 600; color: #f1f5f9; font-size: 0.88rem;">
+                      Feature Similarity Structure (Local Neighborhoods)
+                    </span>
+                    <span style="font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted);">70x70 px Local Patches</span>
+                  </div>
+
+                  <div class="neighborhood-views-row">
+                    <!-- Source Patch -->
+                    <div class="patch-view-box">
+                      <div class="patch-canvas-wrap">
+                        <canvas id="sourceNeighborhoodCanvas" width="140" height="140"></canvas>
+                        <div class="reticle-cross"></div>
+                      </div>
+                      <div class="patch-caption">Source (Moving) Patch</div>
+                    </div>
+
+                    <!-- Reference Patch -->
+                    <div class="patch-view-box">
+                      <div class="patch-canvas-wrap">
+                        <canvas id="refNeighborhoodCanvas" width="140" height="140"></canvas>
+                        <div class="reticle-cross"></div>
+                      </div>
+                      <div class="patch-caption">Reference (Fixed) Patch</div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Right Column: Uncertainty & Match Quality Cards -->
+              <div class="panel-uncertainty">
+                
+                <!-- Match Confidence Gauge Card -->
+                <div class="uncertainty-card">
+                  <div class="uncertainty-header">
+                    <div class="uncertainty-title">Match Quality & Descriptor Confidence</div>
+                    <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--primary-cyan);" id="diagMatchConfidenceVal">98%</span>
+                  </div>
+                  <div class="confidence-meter-wrap">
+                    <div class="meter-labels">
+                      <span style="color:var(--text-muted);">Residual Tolerance</span>
+                      <span style="color:#34d399;">High Inlier Probability</span>
+                    </div>
+                    <div class="meter-track">
+                      <div class="meter-fill" id="diagMatchConfidenceBar" style="width: 98%;"></div>
+                    </div>
+                  </div>
+                  <div class="uncertainty-explanation" id="diagExplanationText">
+                    <strong>Geometric Inlier Confirmed:</strong> Feature patch preserves multi-scale descriptor invariance across sensor resolutions (OHRC 0.25m vs TMC 5m). 
+                    Sun illumination angle variance is compensated by gradient orientation normalization.
+                  </div>
+                </div>
+
+                <!-- Scale Invariance Uncertainty Card -->
+                <div class="uncertainty-card">
+                  <div class="uncertainty-header">
+                    <div class="uncertainty-title">Scale Consistency & Ground Resolution Ratio</div>
+                    <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--primary-cyan);" id="diagScaleConfidenceVal">96%</span>
+                  </div>
+                  <div class="confidence-meter-wrap">
+                    <div class="meter-labels">
+                      <span style="color:var(--text-muted);">Scale Discrepancy Margin</span>
+                      <span style="color:#38bdf8;">Optimal Convergence (1.305x)</span>
+                    </div>
+                    <div class="meter-track">
+                      <div class="meter-fill" id="diagScaleConfidenceBar" style="width: 96%; background: linear-gradient(90deg, #38bdf8, #6366f1);"></div>
+                    </div>
+                  </div>
+                  <div class="uncertainty-explanation">
+                    <strong>Sensor Resolution Invariance:</strong> Scale-space Laplacian of Gaussian (LoG) extrema successfully resolved the 1.305x optical scale difference without sub-pixel aliasing.
+                  </div>
+                </div>
+
+                <!-- Sun Angle & Illumination Invariance Card -->
+                <div class="uncertainty-card">
+                  <div class="uncertainty-header">
+                    <div class="uncertainty-title">Sun Incidence & Illumination Compensation</div>
+                    <span style="font-family:var(--font-mono); font-size:0.75rem; color:#f59e0b;">Δ 36.8°</span>
+                  </div>
+                  <div class="uncertainty-explanation" style="border-color: #f59e0b;">
+                    <strong>Illumination Invariance:</strong> Moving frame captured at high sun incidence angle (58.2°) with elongated shadows. Reference frame captured at low incidence angle (21.4°). 
+                    Phase congruency and edge gradient normalization eliminate false matches across shifting shadow boundaries.
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+        <!-- =====================================================================
+             VIEW 3: REGISTRATION OVERLAY & VALIDATION LAYER
+             ===================================================================== -->
+        <section class="view-panel" id="view-registration-overlay">
+          
+          <div class="overlay-page-container">
+            
+            <!-- Toolstrip Controls -->
+            <div class="overlay-toolstrip">
+              
+              <!-- Mode Tabs -->
+              <div class="toolstrip-group">
+                <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted);">VALIDATION MODE:</span>
+                <div class="mode-toggle-group">
+                  <button class="btn-mode-tab active" data-mode="alpha">Alpha Blend</button>
+                  <button class="btn-mode-tab" data-mode="swipe">Slider Swipe</button>
+                  <button class="btn-mode-tab" data-mode="flicker">Flicker (2 Hz)</button>
+                </div>
+              </div>
+
+              <!-- Alpha Opacity Slider -->
+              <div class="toolstrip-group" id="opacitySliderWrap">
+                <div class="slider-control-wrap">
+                  <span>Opacity:</span>
+                  <input type="range" class="tech-range-slider" id="overlayOpacitySlider" min="0" max="1" step="0.01" value="0.5">
+                  <span id="overlayOpacityVal" style="color: #f1f5f9; min-width: 32px;">50%</span>
+                </div>
+              </div>
+
+              <!-- Keypoint Visual Toggles -->
+              <div class="toolstrip-group">
+                <button class="keypoint-toggle-btn active" id="toggleInliersBtn">
+                  <span class="legend-dot accepted"></span>
+                  <span>Inliers (Accepted)</span>
+                </button>
+                <button class="keypoint-toggle-btn active" id="toggleOutliersBtn">
+                  <span class="legend-dot rejected"></span>
+                  <span>Outliers (Rejected)</span>
+                </button>
+              </div>
+
+            </div>
+
+            <!-- Interactive Canvas Stage -->
+            <div class="overlay-stage-container" id="overlayStageContainer">
+              
+              <canvas id="overlayCanvas" width="600" height="500"></canvas>
+              
+              <!-- Interactive Swipe Handle -->
+              <div class="swipe-divider-handle" id="swipeDividerHandle">
+                <div class="swipe-divider-badge">⟷</div>
+              </div>
+
+              <!-- Canvas Tooltip for Hovered Keypoints -->
+              <div class="canvas-tooltip" id="canvasTooltip"></div>
+
+              <!-- Legend Overlay -->
+              <div class="overlay-legend-card">
+                <div class="legend-item">
+                  <span class="legend-dot accepted"></span>
+                  <span>Accepted Match</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-dot rejected"></span>
+                  <span>Rejected Outlier</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-dot source"></span>
+                  <span>Source Point</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-dot ref"></span>
+                  <span>Reference Point</span>
+                </div>
+              </div>
+
+              <!-- Empty State Overlay if No Images Loaded -->
+              <div class="overlay-empty-state" id="overlayEmptyState" style="display: none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                  <polyline points="2 17 12 22 22 17"></polyline>
+                  <polyline points="2 12 12 17 22 12"></polyline>
+                </svg>
+                <h3>Registration Overlay Standby</h3>
+                <p>Registration overlay will appear after pipeline execution. Upload imagery or click Load Sample Dataset to inspect.</p>
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- Non-intrusive Toast Notification Container -->
+  <div id="toastContainer" style="position: fixed; bottom: 24px; right: 24px; z-index: 9999; pointer-events: none; display: flex; flex-direction: column; align-items: flex-end;"></div>
+
+  <!-- Application Modules -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

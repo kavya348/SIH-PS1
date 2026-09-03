@@ -1,0 +1,10 @@
+{
+  "name": "sih-ps1-lunaalign-ai",
+  "version": "1.0.0",
+  "description": "LunaAlign AI - SIH 2026 Chandrayaan-2 Lunar Image Registration Dashboard (ISRO PS #26166)",
+  "scripts": {
+    "start": "python3 server.py",
+    "dev": "python3 server.py",
+    "serve": "python3 server.py"
+  }
+}
