@@ -9,12 +9,15 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2306b6d4'><circle cx='12' cy='12' r='10'/></svg>">
 </head>
 <body>
+  <!-- Mobile Sidebar Overlay Backdrop -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
   <div class="app-container">
     
     <!-- =========================================================================
          SIDEBAR: COMPACT SPACE MISSION CONTROL
          ========================================================================= -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="appSidebar">
       
       <!-- Brand & Mission Header -->
       <div class="sidebar-brand">
@@ -29,7 +32,7 @@
         </div>
         <div class="brand-text">
           <div class="brand-title">LunaAlign AI</div>
-          <div class="brand-subtitle">SIH26166 Registration Dashboard</div>
+          <div class="brand-subtitle">Planetary Mapping Workstation</div>
         </div>
       </div>
 
@@ -90,10 +93,10 @@
             <span class="live-dot"></span>
             <span>Pipeline Status</span>
           </div>
-          <span class="timeline-badge" id="pipelineTimelineBadge">ISRO CORE</span>
         </div>
 
         <div class="timeline-list">
+          <div class="timeline-progress-bar" id="timelineProgressBar"></div>
           <div class="timeline-step" id="step-0">
             <div class="step-marker">01</div>
             <div class="step-label">Raw Ingestion</div>
@@ -125,9 +128,9 @@
       <div class="sidebar-footer">
         <div class="backend-indicator" id="sidebarBackendIndicator">
           <span class="status-bulb"></span>
-          <span id="sidebarBackendText">Backend: Autonomous Mode</span>
+          <span id="sidebarBackendText">Backend: Autonomous Standby</span>
         </div>
-        <span>v2.4-SIH</span>
+        <span>SPICE v2.4</span>
       </div>
 
     </aside>
@@ -140,12 +143,26 @@
       <!-- Top Mission Header -->
       <header class="top-header">
         <div class="header-left">
-          <h1 class="page-title" id="topPageTitle">Source & Reference Input</h1>
-          <p class="page-subtitle" id="topPageSubtitle">Upload lunar imagery for correspondence and registration</p>
+          <button class="btn-mobile-nav" id="btnMobileNavToggle" aria-label="Toggle Navigation">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+          <div>
+            <h1 class="page-title" id="topPageTitle">Source & Reference Input</h1>
+            <p class="page-subtitle" id="topPageSubtitle">Upload lunar imagery for correspondence and registration</p>
+          </div>
         </div>
 
         <!-- Telemetry HUD & Status -->
         <div class="header-telemetry">
+          <div class="telemetry-chip">
+            <span class="telemetry-label">Sensors:</span>
+            <span class="telemetry-val" id="headerSensorVal">OHRC / TMC-2</span>
+          </div>
+
           <div class="telemetry-chip">
             <span class="telemetry-label">RMSE:</span>
             <span class="telemetry-val highlight" id="headerRmseVal">-- px</span>
@@ -188,95 +205,111 @@
              ===================================================================== -->
         <section class="view-panel active" id="view-raw-imagery">
           
-          <!-- Dual Upload Cards -->
-          <div class="upload-cards-grid">
-            
-            <!-- Source Image (Moving / Unregistered) -->
-            <div class="upload-card">
-              <div class="card-header-bar">
-                <div class="card-title-group">
-                  <h3>Source Image</h3>
-                  <span>Unregistered / Target Moving Frame</span>
+          <!-- Upload Cards Grid with Center Swap Action -->
+          <div class="upload-section-wrapper">
+            <div class="upload-cards-grid">
+              
+              <!-- Source Image (Moving / Unregistered) -->
+              <div class="upload-card" id="cardSource">
+                <div class="card-header-bar">
+                  <div class="card-title-group">
+                    <h3>Source Image</h3>
+                    <span>Moving / Target Unregistered Frame</span>
+                  </div>
+                  <span class="card-badge-role source">Moving / Unregistered</span>
                 </div>
-                <span class="card-badge-role source">Moving / Unregistered</span>
+
+                <!-- Drag & Drop Zone (Full Card Clickable) -->
+                <div class="dropzone-area" id="sourceDropzone" title="Click or drop file to upload">
+                  <input type="file" id="sourceFileInput" accept="image/png, image/jpeg, image/tiff, image/webp" style="display: none;">
+                  <div class="dropzone-icon">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="17 8 12 3 7 8"></polyline>
+                      <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                  </div>
+                  <div class="dropzone-text">
+                    <div class="dropzone-primary-text">Drag & drop Source raster or <span class="dropzone-browse-link">Browse Files</span></div>
+                    <div class="dropzone-subtext">Supported: GeoTIFF, PNG, JPEG (OHRC / TMC / IIRS 16-bit)</div>
+                  </div>
+                </div>
+
+                <!-- Selected Image Preview -->
+                <div class="preview-container" id="sourcePreview">
+                  <img id="sourcePreviewImg" class="preview-image" alt="Source Lunar Preview">
+                  <div class="preview-overlay-specs">
+                    <span class="preview-filename" id="sourceFilename">OHRC_Frame.png</span>
+                    <span class="preview-meta" id="sourceSpecsMeta">600x500 • 2.8 MB</span>
+                  </div>
+                  <button class="btn-remove-image" id="btnRemoveSource" title="Remove or replace image">✕</button>
+                </div>
+
+                <!-- Quick Action Links -->
+                <div class="card-bottom-actions">
+                  <span class="sensor-tag-pill">OHRC Panchromatic (0.25 m/px)</span>
+                  <button class="btn-quick-sample" id="btnQuickSampleSource">Regenerate OHRC Sample</button>
+                </div>
               </div>
 
-              <!-- Drag & Drop Zone -->
-              <div class="dropzone-area" id="sourceDropzone">
-                <input type="file" id="sourceFileInput" accept="image/png, image/jpeg, image/tiff, image/webp" style="display: none;">
-                <div class="dropzone-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="17 8 12 3 7 8"></polyline>
-                    <line x1="12" y1="3" x2="12" y2="15"></line>
+              <!-- Swap Frames Floating Button -->
+              <div class="swap-action-divider">
+                <button class="btn-swap-imagery" id="btnSwapImagery" title="Swap Source (Moving) and Reference (Fixed) Target Images">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="16 3 21 3 21 8"></polyline>
+                    <line x1="4" y1="20" x2="21" y2="3"></line>
+                    <polyline points="21 16 21 21 16 21"></polyline>
+                    <line x1="15" y1="15" x2="21" y2="21"></line>
+                    <line x1="4" y1="4" x2="9" y2="9"></line>
                   </svg>
+                  <span>Swap Roles</span>
+                </button>
+              </div>
+
+              <!-- Reference Image (Fixed / Reference Target) -->
+              <div class="upload-card" id="cardReference">
+                <div class="card-header-bar">
+                  <div class="card-title-group">
+                    <h3>Reference Target</h3>
+                    <span>Fixed / Reference Base Frame</span>
+                  </div>
+                  <span class="card-badge-role reference">Fixed / Reference</span>
                 </div>
-                <div class="dropzone-text">
-                  <div class="dropzone-primary-text">Drag & drop Source raster or <span class="dropzone-browse-link" onclick="document.getElementById('sourceFileInput').click()">Browse Files</span></div>
-                  <div class="dropzone-subtext">Supported: GeoTIFF, PNG, JPEG (OHRC / TMC / IIRS 16-bit)</div>
+
+                <!-- Drag & Drop Zone (Full Card Clickable) -->
+                <div class="dropzone-area" id="refDropzone" title="Click or drop file to upload">
+                  <input type="file" id="refFileInput" accept="image/png, image/jpeg, image/tiff, image/webp" style="display: none;">
+                  <div class="dropzone-icon">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="17 8 12 3 7 8"></polyline>
+                      <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                  </div>
+                  <div class="dropzone-text">
+                    <div class="dropzone-primary-text">Drag & drop Reference raster or <span class="dropzone-browse-link">Browse Files</span></div>
+                    <div class="dropzone-subtext">Supported: GeoTIFF, PNG, JPEG (Baseline Map / Orthorectified)</div>
+                  </div>
+                </div>
+
+                <!-- Selected Image Preview -->
+                <div class="preview-container" id="refPreview">
+                  <img id="refPreviewImg" class="preview-image" alt="Reference Lunar Preview">
+                  <div class="preview-overlay-specs">
+                    <span class="preview-filename" id="refFilename">TMC_Frame.png</span>
+                    <span class="preview-meta" id="refSpecsMeta">600x500 • 1.9 MB</span>
+                  </div>
+                  <button class="btn-remove-image" id="btnRemoveRef" title="Remove or replace image">✕</button>
+                </div>
+
+                <!-- Quick Action Links -->
+                <div class="card-bottom-actions">
+                  <span class="sensor-tag-pill">TMC-2 Stereo (5.0 m/px)</span>
+                  <button class="btn-quick-sample" id="btnQuickSampleRef">Regenerate TMC Sample</button>
                 </div>
               </div>
 
-              <!-- Selected Image Preview -->
-              <div class="preview-container" id="sourcePreview">
-                <img id="sourcePreviewImg" class="preview-image" alt="Source Lunar Preview">
-                <div class="preview-overlay-specs">
-                  <span class="preview-filename" id="sourceFilename">OHRC_Frame.png</span>
-                  <span class="preview-meta" id="sourceSpecsMeta">600x500 • 2.8 MB</span>
-                </div>
-                <button class="btn-remove-image" id="btnRemoveSource" title="Remove or replace image">✕</button>
-              </div>
-
-              <!-- Quick Action Links -->
-              <div class="card-bottom-actions">
-                <span>Default: Chandrayaan-2 OHRC (0.25m/px)</span>
-                <button class="btn-quick-sample" id="btnQuickSampleSource">Regenerate OHRC Sample</button>
-              </div>
             </div>
-
-            <!-- Reference Image (Fixed / Reference Target) -->
-            <div class="upload-card">
-              <div class="card-header-bar">
-                <div class="card-title-group">
-                  <h3>Reference Target</h3>
-                  <span>Fixed Base Reference Frame</span>
-                </div>
-                <span class="card-badge-role reference">Fixed / Reference</span>
-              </div>
-
-              <!-- Drag & Drop Zone -->
-              <div class="dropzone-area" id="refDropzone">
-                <input type="file" id="refFileInput" accept="image/png, image/jpeg, image/tiff, image/webp" style="display: none;">
-                <div class="dropzone-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="17 8 12 3 7 8"></polyline>
-                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                  </svg>
-                </div>
-                <div class="dropzone-text">
-                  <div class="dropzone-primary-text">Drag & drop Reference raster or <span class="dropzone-browse-link" onclick="document.getElementById('refFileInput').click()">Browse Files</span></div>
-                  <div class="dropzone-subtext">Supported: GeoTIFF, PNG, JPEG (Baseline map / Orthorectified)</div>
-                </div>
-              </div>
-
-              <!-- Selected Image Preview -->
-              <div class="preview-container" id="refPreview">
-                <img id="refPreviewImg" class="preview-image" alt="Reference Lunar Preview">
-                <div class="preview-overlay-specs">
-                  <span class="preview-filename" id="refFilename">TMC_Frame.png</span>
-                  <span class="preview-meta" id="refSpecsMeta">600x500 • 1.9 MB</span>
-                </div>
-                <button class="btn-remove-image" id="btnRemoveRef" title="Remove or replace image">✕</button>
-              </div>
-
-              <!-- Quick Action Links -->
-              <div class="card-bottom-actions">
-                <span>Default: Chandrayaan-2 TMC-2 (5.0m/px)</span>
-                <button class="btn-quick-sample" id="btnQuickSampleRef">Regenerate TMC Sample</button>
-              </div>
-            </div>
-
           </div>
 
           <!-- Lunar Image Metadata Configuration -->
@@ -288,7 +321,7 @@
                 </svg>
                 <span>Instrument & Photometric Metadata</span>
               </div>
-              <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted);">ISRO SPICE Planetary Kernel Compliant</span>
+              <span class="metadata-standard-badge">ISRO SPICE Planetary Kernel Compliant</span>
             </div>
 
             <div class="metadata-grid">
@@ -388,6 +421,7 @@
           <div class="terminal-log-card" id="terminalLogBox">
             <div class="log-entry">
               <span class="log-time">[STANDBY]</span>
+              <span class="log-tag info">SYS</span>
               <span class="log-text">LunaAlign Core initialized. Ready to ingest lunar optical frames.</span>
             </div>
           </div>
@@ -403,7 +437,7 @@
             
             <!-- Match Selector Strip -->
             <div class="match-selector-strip">
-              <span class="selector-label">Verified Matches:</span>
+              <span class="selector-label">Verified Correspondences:</span>
               <div class="match-chips-row" id="matchChipsRow">
                 <!-- Injected dynamically by diagnostics.js -->
               </div>
@@ -418,6 +452,9 @@
               </svg>
               <h3>Awaiting Registration Execution</h3>
               <p>Feature visualization, scale uncertainty and local image neighborhood crops will appear after pipeline execution.</p>
+              <button class="btn-sample-dataset" onclick="document.getElementById('btnSidebarRunPipeline').click()" style="width:auto; margin-top:14px; padding:10px 20px;">
+                Execute Pipeline Now
+              </button>
             </div>
 
             <!-- Diagnostics Content Grid -->
@@ -433,65 +470,94 @@
                   <span class="badge-inlier-status inlier" id="diagMatchStatus">INLIER</span>
                 </div>
 
-                <!-- Match Telemetry Table -->
-                <div class="metrics-table-grid">
-                  <div class="metric-row-item">
-                    <span class="m-label">Match ID:</span>
-                    <span class="m-val" id="diagMatchId">#1</span>
+                <!-- Structured Diagnostic Metrics Grouping -->
+                <div class="diag-metrics-sections">
+                  
+                  <!-- Group 1: Spatial Alignment -->
+                  <div class="diag-metric-group">
+                    <div class="metric-group-title">Spatial Coordinates & Residuals</div>
+                    <div class="metrics-table-grid">
+                      <div class="metric-row-item">
+                        <span class="m-label">Match ID:</span>
+                        <span class="m-val" id="diagMatchId">#1</span>
+                      </div>
+                      <div class="metric-row-item">
+                        <span class="m-label">Residual Error:</span>
+                        <span class="m-val cyan" id="diagResidualError">0.42 px</span>
+                      </div>
+                      <div class="metric-row-item">
+                        <span class="m-label">Source Coords (Moving):</span>
+                        <span class="m-val" id="diagSourceCoords">(182, 151) px</span>
+                      </div>
+                      <div class="metric-row-item">
+                        <span class="m-label">Target Coords (Fixed):</span>
+                        <span class="m-val" id="diagRefCoords">(221, 176) px</span>
+                      </div>
+                    </div>
                   </div>
-                  <div class="metric-row-item">
-                    <span class="m-label">Residual Error:</span>
-                    <span class="m-val cyan" id="diagResidualError">0.42 px</span>
+
+                  <!-- Group 2: Scale Invariance & Descriptor -->
+                  <div class="diag-metric-group">
+                    <div class="metric-group-title">Scale-Space & Descriptor Invariance</div>
+                    <div class="metrics-table-grid">
+                      <div class="metric-row-item">
+                        <span class="m-label">Scale Ratio (s1/s2):</span>
+                        <span class="m-val cyan" id="diagScaleRatio">1.300x</span>
+                      </div>
+                      <div class="metric-row-item">
+                        <span class="m-label">Descriptor L2 Dist:</span>
+                        <span class="m-val" id="diagDescriptorDist">0.1420</span>
+                      </div>
+                      <div class="metric-row-item">
+                        <span class="m-label">Source Scale Octave:</span>
+                        <span class="m-val" id="diagSourceScale">1.00x</span>
+                      </div>
+                      <div class="metric-row-item">
+                        <span class="m-label">Target Scale Octave:</span>
+                        <span class="m-val" id="diagRefScale">0.77x</span>
+                      </div>
+                    </div>
                   </div>
-                  <div class="metric-row-item">
-                    <span class="m-label">Source Coordinates:</span>
-                    <span class="m-val" id="diagSourceCoords">(182, 151) px</span>
+
+                  <!-- Group 3: Illumination & Orientation -->
+                  <div class="diag-metric-group">
+                    <div class="metric-group-title">Photometric & Angle Compensation</div>
+                    <div class="metrics-table-grid">
+                      <div class="metric-row-item">
+                        <span class="m-label">Source Feature Angle:</span>
+                        <span class="m-val" id="diagSourceAngle">142.4°</span>
+                      </div>
+                      <div class="metric-row-item">
+                        <span class="m-label">Target Feature Angle:</span>
+                        <span class="m-val" id="diagRefAngle">114.1°</span>
+                      </div>
+                      <div class="metric-row-item">
+                        <span class="m-label">Angle Difference (Δθ):</span>
+                        <span class="m-val cyan" id="diagAngleDiff">Δ 28.3°</span>
+                      </div>
+                      <div class="metric-row-item">
+                        <span class="m-label">Photometric Compensation:</span>
+                        <span class="m-val highlight">Validated</span>
+                      </div>
+                    </div>
                   </div>
-                  <div class="metric-row-item">
-                    <span class="m-label">Reference Coordinates:</span>
-                    <span class="m-val" id="diagRefCoords">(221, 176) px</span>
-                  </div>
-                  <div class="metric-row-item">
-                    <span class="m-label">Descriptor L2 Dist:</span>
-                    <span class="m-val" id="diagDescriptorDist">0.1420</span>
-                  </div>
-                  <div class="metric-row-item">
-                    <span class="m-label">Scale Ratio (s1/s2):</span>
-                    <span class="m-val cyan" id="diagScaleRatio">1.300x</span>
-                  </div>
-                  <div class="metric-row-item">
-                    <span class="m-label">Source Scale:</span>
-                    <span class="m-val" id="diagSourceScale">1.00x</span>
-                  </div>
-                  <div class="metric-row-item">
-                    <span class="m-label">Reference Scale:</span>
-                    <span class="m-val" id="diagRefScale">0.77x</span>
-                  </div>
-                  <div class="metric-row-item">
-                    <span class="m-label">Source Feature Angle:</span>
-                    <span class="m-val" id="diagSourceAngle">142.4°</span>
-                  </div>
-                  <div class="metric-row-item">
-                    <span class="m-label">Reference Feature Angle:</span>
-                    <span class="m-val" id="diagRefAngle">114.1°</span>
-                  </div>
-                  <div class="metric-row-item">
-                    <span class="m-label">Angle Difference:</span>
-                    <span class="m-val" id="diagAngleDiff">Δ 28.3°</span>
-                  </div>
-                  <div class="metric-row-item">
-                    <span class="m-label">Photometric Sun Invariance:</span>
-                    <span class="m-val cyan">Validated</span>
-                  </div>
+
                 </div>
 
-                <!-- Feature Similarity Structure Card -->
+                <!-- Feature Similarity Structure Card (3-Patch High Magnification) -->
                 <div class="neighborhood-card">
-                  <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-family: var(--font-display); font-weight: 600; color: #f1f5f9; font-size: 0.88rem;">
-                      Feature Similarity Structure (Local Neighborhoods)
-                    </span>
-                    <span style="font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted);">70x70 px Local Patches</span>
+                  <div class="neighborhood-header">
+                    <div>
+                      <span class="neighborhood-title">Feature Similarity Structure (Local Neighborhoods)</span>
+                      <span class="neighborhood-subtext">70×70 px Synchronized High-Resolution Crops</span>
+                    </div>
+                    <!-- Zoom Controls -->
+                    <div class="neighborhood-zoom-controls">
+                      <span class="zoom-label">MAG:</span>
+                      <button class="btn-zoom-pill active" data-zoom="2">2×</button>
+                      <button class="btn-zoom-pill" data-zoom="4">4×</button>
+                      <button class="btn-zoom-pill" data-zoom="8">8×</button>
+                    </div>
                   </div>
 
                   <div class="neighborhood-views-row">
@@ -512,6 +578,15 @@
                       </div>
                       <div class="patch-caption">Reference (Fixed) Patch</div>
                     </div>
+
+                    <!-- Alignment Difference Heatmap -->
+                    <div class="patch-view-box">
+                      <div class="patch-canvas-wrap">
+                        <canvas id="diffNeighborhoodCanvas" width="140" height="140"></canvas>
+                        <div class="reticle-cross"></div>
+                      </div>
+                      <div class="patch-caption">Residual Error Heatmap</div>
+                    </div>
                   </div>
                 </div>
 
@@ -524,7 +599,7 @@
                 <div class="uncertainty-card">
                   <div class="uncertainty-header">
                     <div class="uncertainty-title">Match Quality & Descriptor Confidence</div>
-                    <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--primary-cyan);" id="diagMatchConfidenceVal">98%</span>
+                    <span class="metric-callout" id="diagMatchConfidenceVal">98%</span>
                   </div>
                   <div class="confidence-meter-wrap">
                     <div class="meter-labels">
@@ -537,7 +612,7 @@
                   </div>
                   <div class="uncertainty-explanation" id="diagExplanationText">
                     <strong>Geometric Inlier Confirmed:</strong> Feature patch preserves multi-scale descriptor invariance across sensor resolutions (OHRC 0.25m vs TMC 5m). 
-                    Sun illumination angle variance is compensated by gradient orientation normalization.
+                    Sun illumination angle variance (Δθ = 28.3°) is compensated by gradient orientation normalization.
                   </div>
                 </div>
 
@@ -545,7 +620,7 @@
                 <div class="uncertainty-card">
                   <div class="uncertainty-header">
                     <div class="uncertainty-title">Scale Consistency & Ground Resolution Ratio</div>
-                    <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--primary-cyan);" id="diagScaleConfidenceVal">96%</span>
+                    <span class="metric-callout" id="diagScaleConfidenceVal">96%</span>
                   </div>
                   <div class="confidence-meter-wrap">
                     <div class="meter-labels">
@@ -565,7 +640,7 @@
                 <div class="uncertainty-card">
                   <div class="uncertainty-header">
                     <div class="uncertainty-title">Sun Incidence & Illumination Compensation</div>
-                    <span style="font-family:var(--font-mono); font-size:0.75rem; color:#f59e0b;">Δ 36.8°</span>
+                    <span class="metric-callout amber">Δ 36.8°</span>
                   </div>
                   <div class="uncertainty-explanation" style="border-color: #f59e0b;">
                     <strong>Illumination Invariance:</strong> Moving frame captured at high sun incidence angle (58.2°) with elongated shadows. Reference frame captured at low incidence angle (21.4°). 
@@ -593,20 +668,35 @@
               
               <!-- Mode Tabs -->
               <div class="toolstrip-group">
-                <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted);">VALIDATION MODE:</span>
+                <span class="toolstrip-label">VALIDATION MODE:</span>
                 <div class="mode-toggle-group">
                   <button class="btn-mode-tab active" data-mode="alpha">Alpha Blend</button>
                   <button class="btn-mode-tab" data-mode="swipe">Slider Swipe</button>
-                  <button class="btn-mode-tab" data-mode="flicker">Flicker (2 Hz)</button>
+                  <button class="btn-mode-tab" data-mode="flicker">Flicker</button>
                 </div>
               </div>
 
-              <!-- Alpha Opacity Slider -->
+              <!-- Alpha Opacity Slider & Quick Presets -->
               <div class="toolstrip-group" id="opacitySliderWrap">
                 <div class="slider-control-wrap">
-                  <span>Opacity:</span>
+                  <span class="toolstrip-label">Opacity:</span>
                   <input type="range" class="tech-range-slider" id="overlayOpacitySlider" min="0" max="1" step="0.01" value="0.5">
-                  <span id="overlayOpacityVal" style="color: #f1f5f9; min-width: 32px;">50%</span>
+                  <span id="overlayOpacityVal" class="slider-val-badge">50%</span>
+                </div>
+                <div class="opacity-presets-group">
+                  <button class="btn-preset-pill" data-opacity="0.25">25%</button>
+                  <button class="btn-preset-pill active" data-opacity="0.50">50%</button>
+                  <button class="btn-preset-pill" data-opacity="0.75">75%</button>
+                </div>
+              </div>
+
+              <!-- Flicker Rate Selector (Visible when in Flicker mode) -->
+              <div class="toolstrip-group" id="flickerControlsWrap" style="display: none;">
+                <span class="toolstrip-label">FREQUENCY:</span>
+                <div class="flicker-rate-group">
+                  <button class="btn-rate-pill" data-rate="1">1 Hz</button>
+                  <button class="btn-rate-pill active" data-rate="2">2 Hz</button>
+                  <button class="btn-rate-pill" data-rate="4">4 Hz</button>
                 </div>
               </div>
 
@@ -629,9 +719,17 @@
               
               <canvas id="overlayCanvas" width="600" height="500"></canvas>
               
-              <!-- Interactive Swipe Handle -->
+              <!-- Interactive Swipe Handle with Percentage Label -->
               <div class="swipe-divider-handle" id="swipeDividerHandle">
                 <div class="swipe-divider-badge">⟷</div>
+                <div class="swipe-divider-label" id="swipeDividerLabel">OHRC 50% | TMC 50%</div>
+              </div>
+
+              <!-- Canvas Live Coordinates HUD -->
+              <div class="canvas-coords-hud" id="canvasCoordsHud">
+                <span class="hud-item"><span class="hud-label">SURFACE:</span> <span class="hud-val" id="hudCoordsVal">X: -- | Y: -- px</span></span>
+                <span class="hud-item"><span class="hud-label">INTENSITY:</span> <span class="hud-val" id="hudIntensityVal">-- DN</span></span>
+                <span class="hud-item"><span class="hud-label">PROJECTION:</span> <span class="hud-val">LME 2005</span></span>
               </div>
 
               <!-- Canvas Tooltip for Hovered Keypoints -->

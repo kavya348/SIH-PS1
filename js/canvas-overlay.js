@@ -1,7 +1,7 @@
 /**
  * LunaAlign AI - Validation Layer & Registration Canvas Renderer
  * Implements Alpha Blend, Interactive Slider Swipe curtain, Flicker comparison,
- * and glowing sub-pixel correspondence point markers with tooltips and click-to-diagnose.
+ * live lunar coordinate telemetry HUD, and glowing correspondence point markers.
  */
 
 import { stateStore } from './state.js';
@@ -26,11 +26,15 @@ export class CanvasOverlayRenderer {
   }
 
   initEvents() {
-    // Mouse movement on canvas for hover tooltips
+    // Mouse movement on canvas for hover tooltips & HUD coordinates
     this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
     this.canvas.addEventListener('mouseleave', () => {
       this.hoveredMatch = null;
       this.hideTooltip();
+      const hudCoords = document.getElementById('hudCoordsVal');
+      const hudIntensity = document.getElementById('hudIntensityVal');
+      if (hudCoords) hudCoords.textContent = 'X: -- | Y: -- px';
+      if (hudIntensity) hudIntensity.textContent = '-- DN';
     });
 
     // Click on canvas to jump to match diagnostic
@@ -95,7 +99,8 @@ export class CanvasOverlayRenderer {
   startFlickerLoop() {
     this.stopFlickerLoop();
     const state = stateStore.get();
-    const intervalMs = Math.max(100, 1000 / (state.overlay.flickerFrequency || 2));
+    const freq = state.overlay.flickerFrequency || 2;
+    const intervalMs = Math.max(80, 1000 / freq);
     this.flickerTimer = setInterval(() => {
       this.flickerFrame = (this.flickerFrame + 1) % 2;
       this.render();
@@ -163,6 +168,14 @@ export class CanvasOverlayRenderer {
       this.dividerHandle.style.left = `${handleLeft}px`;
       this.dividerHandle.style.top = `${canvasRect.top - containerRect.top}px`;
       this.dividerHandle.style.height = `${canvasRect.height}px`;
+
+      // Update interactive label percentage
+      const label = document.getElementById('swipeDividerLabel');
+      if (label) {
+        const p1 = Math.round(swipePosition * 100);
+        const p2 = 100 - p1;
+        label.textContent = `OHRC ${p1}% | TMC ${p2}%`;
+      }
     }
     // MODE 3: FLICKER
     else if (mode === 'flicker') {
@@ -173,14 +186,14 @@ export class CanvasOverlayRenderer {
 
       if (this.flickerFrame === 0) {
         this.ctx.drawImage(this.sourceImgObj, 0, 0, w, h);
-        this.drawCornerBadge('SOURCE (Moving Frame)', '#38bdf8');
+        this.drawCornerBadge('SOURCE (OHRC Moving Frame)', '#38bdf8');
       } else {
         this.ctx.drawImage(this.refImgObj, 0, 0, w, h);
-        this.drawCornerBadge('REFERENCE (Fixed Target)', '#a855f7');
+        this.drawCornerBadge('REFERENCE (TMC Fixed Target)', '#a855f7');
       }
     }
 
-    // DRAW MATCHING POINTS OVERLAY
+    // DRAW MATCHING CORRESPONDENCE POINTS
     if (state.telemetry.matches && state.telemetry.matches.length > 0) {
       this.renderMatchPoints(state.telemetry.matches, showInliers, showOutliers);
     }
@@ -188,14 +201,14 @@ export class CanvasOverlayRenderer {
 
   drawCornerBadge(text, color) {
     this.ctx.save();
-    this.ctx.fillStyle = 'rgba(6, 9, 17, 0.85)';
-    this.ctx.fillRect(12, 12, 210, 28);
+    this.ctx.fillStyle = 'rgba(6, 9, 17, 0.88)';
+    this.ctx.fillRect(14, 14, 230, 30);
     this.ctx.strokeStyle = color;
-    this.ctx.lineWidth = 1;
-    this.ctx.strokeRect(12, 12, 210, 28);
+    this.ctx.lineWidth = 1.5;
+    this.ctx.strokeRect(14, 14, 230, 30);
     this.ctx.fillStyle = color;
     this.ctx.font = 'bold 11px JetBrains Mono';
-    this.ctx.fillText(text, 22, 30);
+    this.ctx.fillText(text, 24, 33);
     this.ctx.restore();
   }
 
@@ -239,7 +252,7 @@ export class CanvasOverlayRenderer {
         this.ctx.beginPath();
         this.ctx.moveTo(m.sourceX, m.sourceY);
         this.ctx.lineTo(m.refX, m.refY);
-        this.ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+        this.ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
         this.ctx.setLineDash([2, 3]);
         this.ctx.stroke();
 
@@ -260,8 +273,6 @@ export class CanvasOverlayRenderer {
 
   handleMouseMove(e) {
     const state = stateStore.get();
-    if (!state.telemetry.matches || state.telemetry.matches.length === 0) return;
-
     const rect = this.canvas.getBoundingClientRect();
     const scaleX = this.canvas.width / rect.width;
     const scaleY = this.canvas.height / rect.height;
@@ -269,7 +280,25 @@ export class CanvasOverlayRenderer {
     const mouseX = (e.clientX - rect.left) * scaleX;
     const mouseY = (e.clientY - rect.top) * scaleY;
 
-    // Find closest match within 12px
+    // Update Live Coordinates HUD
+    const hudCoords = document.getElementById('hudCoordsVal');
+    const hudIntensity = document.getElementById('hudIntensityVal');
+    if (hudCoords && mouseX >= 0 && mouseX <= this.canvas.width && mouseY >= 0 && mouseY <= this.canvas.height) {
+      hudCoords.textContent = `X: ${Math.round(mouseX)} | Y: ${Math.round(mouseY)} px`;
+    }
+    if (hudIntensity && mouseX >= 0 && mouseX <= this.canvas.width && mouseY >= 0 && mouseY <= this.canvas.height) {
+      try {
+        const pixel = this.ctx.getImageData(Math.floor(mouseX), Math.floor(mouseY), 1, 1).data;
+        const gray = Math.round(0.299 * pixel[0] + 0.587 * pixel[1] + 0.114 * pixel[2]);
+        hudIntensity.textContent = `${gray} DN`;
+      } catch (err) {
+        hudIntensity.textContent = `-- DN`;
+      }
+    }
+
+    if (!state.telemetry.matches || state.telemetry.matches.length === 0) return;
+
+    // Find closest match within 14px
     let closest = null;
     let minDist = 14;
 
@@ -296,7 +325,6 @@ export class CanvasOverlayRenderer {
   handleClick(e) {
     if (this.hoveredMatch) {
       stateStore.set({ selectedMatchId: this.hoveredMatch.id });
-      // Notify user via subtle toast and allow switching to diagnostics
       window.dispatchEvent(new CustomEvent('match-selected', { detail: this.hoveredMatch }));
     }
   }
@@ -312,15 +340,15 @@ export class CanvasOverlayRenderer {
 
     const isInlier = match.status === 'INLIER';
     this.tooltip.innerHTML = `
-      <div style="font-weight:700; color:${isInlier ? '#34d399' : '#f43f5e'}; margin-bottom:4px;">
+      <div style="font-weight:700; color:${isInlier ? '#34d399' : '#f43f5e'}; margin-bottom:4px; font-size:11px;">
         Match #${match.id}: ${match.status}
       </div>
       <div>Feature: <span style="color:#e2e8f0;">${match.featureName || 'Lunar Keypoint'}</span></div>
-      <div>Source Coords: <span style="color:#38bdf8;">(${match.sourceX}, ${match.sourceY})</span></div>
-      <div>Reference Coords: <span style="color:#c084fc;">(${match.refX}, ${match.refY})</span></div>
+      <div>Source Coords: <span style="color:#38bdf8;">(${match.sourceX}, ${match.sourceY}) px</span></div>
+      <div>Reference Coords: <span style="color:#c084fc;">(${match.refX}, ${match.refY}) px</span></div>
       <div>Scale Ratio: <span style="color:#fbbf24;">${match.scaleRatio.toFixed(2)}x</span></div>
       <div>Residual Error: <span style="color:#e2e8f0;">${match.residualError.toFixed(2)} px</span></div>
-      <div style="font-size:10px; color:#94a3b8; margin-top:4px;">Click to inspect deep diagnostics</div>
+      <div style="font-size:10px; color:#38bdf8; margin-top:5px;">Click to inspect in deep diagnostics ↗</div>
     `;
   }
 

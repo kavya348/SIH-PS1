@@ -10,13 +10,37 @@ export class DiagnosticsManager {
   constructor() {
     this.sourceCanvas = document.getElementById('sourceNeighborhoodCanvas');
     this.refCanvas = document.getElementById('refNeighborhoodCanvas');
+    this.diffCanvas = document.getElementById('diffNeighborhoodCanvas');
+
     this.sourceCtx = this.sourceCanvas ? this.sourceCanvas.getContext('2d') : null;
     this.refCtx = this.refCanvas ? this.refCanvas.getContext('2d') : null;
+    this.diffCtx = this.diffCanvas ? this.diffCanvas.getContext('2d') : null;
+
+    this.currentZoom = 2; // default 2x magnification
+    this.initZoomControls();
   }
 
   init() {
     stateStore.subscribe((state) => {
       this.update(state);
+    });
+  }
+
+  initZoomControls() {
+    const zoomBtns = document.querySelectorAll('.btn-zoom-pill');
+    zoomBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        zoomBtns.forEach(b => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        this.currentZoom = parseInt(e.currentTarget.dataset.zoom) || 2;
+        const state = stateStore.get();
+        const matches = state.telemetry.matches || [];
+        const selectedId = state.selectedMatchId || 1;
+        const selected = matches.find(m => m.id === selectedId) || matches[0];
+        if (selected) {
+          this.renderNeighborhoodCrops(selected, state.sourceImage, state.referenceImage);
+        }
+      });
     });
   }
 
@@ -50,8 +74,9 @@ export class DiagnosticsManager {
       const isSelected = m.id === selectedId;
       const isOutlier = m.status !== 'INLIER';
       return `
-        <button class="chip-match ${isSelected ? 'active' : ''} ${isOutlier ? 'outlier' : ''}" data-id="${m.id}">
-          #${m.id} ${m.status === 'INLIER' ? '✓' : '✗'}
+        <button class="chip-match ${isSelected ? 'active' : ''} ${isOutlier ? 'outlier' : ''}" data-id="${m.id}" title="${m.featureName}">
+          <span>#${m.id} ${m.status === 'INLIER' ? '✓' : '✗'}</span>
+          <span class="chip-err-pill">${m.residualError.toFixed(2)}px</span>
         </button>
       `;
     }).join('');
@@ -123,7 +148,9 @@ export class DiagnosticsManager {
   renderNeighborhoodCrops(match, sourceImg, refImg) {
     if (!this.sourceCtx || !this.refCtx || !sourceImg?.canvas || !refImg?.canvas) return;
 
-    const cropRadius = 35; // 70x70 px neighborhood patch
+    // Crop size based on zoom
+    const baseRadius = 35;
+    const cropRadius = Math.round(baseRadius / (this.currentZoom / 2));
 
     // Crop Source Patch
     this.sourceCtx.clearRect(0, 0, 140, 140);
@@ -154,6 +181,45 @@ export class DiagnosticsManager {
       140,
       140
     );
+
+    // Render Residual Error Heatmap on diffCanvas
+    if (this.diffCtx) {
+      this.diffCtx.clearRect(0, 0, 140, 140);
+      try {
+        const srcData = this.sourceCtx.getImageData(0, 0, 140, 140);
+        const refData = this.refCtx.getImageData(0, 0, 140, 140);
+        const diffData = this.diffCtx.createImageData(140, 140);
+
+        for (let i = 0; i < srcData.data.length; i += 4) {
+          const diff = Math.abs(srcData.data[i] - refData.data[i]);
+          if (diff < 25) {
+            // Excellent correlation (Emerald/Cyan)
+            diffData.data[i] = 16;
+            diffData.data[i + 1] = 185;
+            diffData.data[i + 2] = 129;
+          } else if (diff < 60) {
+            // Moderate illumination gradient (Sky blue)
+            diffData.data[i] = 56;
+            diffData.data[i + 1] = 189;
+            diffData.data[i + 2] = 248;
+          } else if (diff < 100) {
+            // Shadow deviation (Amber)
+            diffData.data[i] = 245;
+            diffData.data[i + 1] = 158;
+            diffData.data[i + 2] = 11;
+          } else {
+            // Outlier threshold (Rose)
+            diffData.data[i] = 244;
+            diffData.data[i + 1] = 63;
+            diffData.data[i + 2] = 94;
+          }
+          diffData.data[i + 3] = 220;
+        }
+        this.diffCtx.putImageData(diffData, 0, 0);
+      } catch (e) {
+        // Fallback if cross-origin image
+      }
+    }
   }
 
   renderUncertaintyCards(match) {
@@ -176,7 +242,7 @@ export class DiagnosticsManager {
       if (match.status === 'INLIER') {
         explainEl.innerHTML = `
           <strong>Geometric Inlier Confirmed:</strong> Feature patch preserves multi-scale descriptor invariance across sensor resolutions (OHRC 0.25m vs TMC 5m). 
-          Sun illumination angle variance ($\Delta\theta = ${match.angleDiff.toFixed(1)}^\circ$) is compensated by gradient orientation normalization.
+          Sun illumination angle variance (Δθ = ${match.angleDiff.toFixed(1)}°) is compensated by gradient orientation normalization.
         `;
       } else {
         explainEl.innerHTML = `

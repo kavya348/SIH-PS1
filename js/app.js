@@ -24,6 +24,7 @@ class LunaAlignApp {
     this.initPipelineTriggers();
     this.initOverlayControls();
     this.initExportReport();
+    this.initMobileNav();
 
     // Initialize Diagnostics Module
     this.diagnosticsManager = new DiagnosticsManager();
@@ -43,7 +44,7 @@ class LunaAlignApp {
     // Handle jump-to-diagnostics on canvas match point click
     window.addEventListener('match-selected', (e) => {
       this.switchTab('diagnostics');
-      this.showToast(`Inspecting Inlier #${e.detail.id}`, 'info');
+      this.showToast(`Inspecting Inlier #${e.detail.id}: ${e.detail.featureName}`, 'info');
     });
 
     // Check live backend status
@@ -63,10 +64,12 @@ class LunaAlignApp {
     this.rmseEl = document.getElementById('headerRmseVal');
     this.inliersEl = document.getElementById('headerInliersVal');
     this.modelEl = document.getElementById('headerModelVal');
+    this.sensorEl = document.getElementById('headerSensorVal');
     this.backendStatusPill = document.getElementById('backendStatusPill');
 
     // Sidebar timeline elements
     this.timelineSteps = document.querySelectorAll('.timeline-step');
+    this.progressBar = document.getElementById('timelineProgressBar');
     this.sidebarRunBtn = document.getElementById('btnSidebarRunPipeline');
     this.rawRunBtn = document.getElementById('btnRawRunPipeline');
   }
@@ -76,7 +79,26 @@ class LunaAlignApp {
       btn.addEventListener('click', (e) => {
         const targetTab = e.currentTarget.dataset.tab;
         this.switchTab(targetTab);
+        // Close mobile drawer on navigation
+        document.getElementById('appSidebar')?.classList.remove('mobile-open');
+        document.getElementById('sidebarBackdrop')?.classList.remove('active');
       });
+    });
+  }
+
+  initMobileNav() {
+    const toggleBtn = document.getElementById('btnMobileNavToggle');
+    const sidebar = document.getElementById('appSidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+
+    toggleBtn?.addEventListener('click', () => {
+      sidebar?.classList.toggle('mobile-open');
+      backdrop?.classList.toggle('active');
+    });
+
+    backdrop?.addEventListener('click', () => {
+      sidebar?.classList.remove('mobile-open');
+      backdrop?.classList.remove('active');
     });
   }
 
@@ -114,7 +136,7 @@ class LunaAlignApp {
       stateStore.set({ sourceImage: imgData });
       this.updateImagePreview('source', imgData);
       this.syncImagesToRenderer();
-      this.showToast('Source moving image loaded successfully', 'success');
+      this.showToast('Source moving frame ingested successfully', 'success');
     });
 
     // Reference Drag & Drop
@@ -122,7 +144,36 @@ class LunaAlignApp {
       stateStore.set({ referenceImage: imgData });
       this.updateImagePreview('reference', imgData);
       this.syncImagesToRenderer();
-      this.showToast('Reference fixed target loaded successfully', 'success');
+      this.showToast('Reference fixed target ingested successfully', 'success');
+    });
+
+    // Swap Source & Reference roles
+    document.getElementById('btnSwapImagery')?.addEventListener('click', () => {
+      const state = stateStore.get();
+      if (!state.sourceImage && !state.referenceImage) return;
+
+      const oldSource = state.sourceImage;
+      const oldRef = state.referenceImage;
+
+      stateStore.set({
+        sourceImage: oldRef,
+        referenceImage: oldSource
+      });
+
+      if (oldRef) {
+        this.updateImagePreview('source', oldRef);
+      } else {
+        this.resetImagePreview('source');
+      }
+
+      if (oldSource) {
+        this.updateImagePreview('reference', oldSource);
+      } else {
+        this.resetImagePreview('reference');
+      }
+
+      this.syncImagesToRenderer();
+      this.showToast('Swapped Moving (Source) and Fixed (Reference) frames', 'info');
     });
 
     // Remove buttons
@@ -139,7 +190,7 @@ class LunaAlignApp {
     // Quick sample load triggers
     document.getElementById('btnLoadSampleDataset')?.addEventListener('click', () => {
       this.loadSampleDataset();
-      this.showToast('Chandrayaan-2 sample dataset loaded', 'success');
+      this.showToast('Chandrayaan-2 benchmark dataset loaded', 'success');
     });
 
     document.getElementById('btnQuickSampleSource')?.addEventListener('click', (e) => {
@@ -163,6 +214,11 @@ class LunaAlignApp {
     const dropzone = document.getElementById(dropzoneId);
     const fileInput = document.getElementById(inputId);
     if (!dropzone || !fileInput) return;
+
+    // Make entire dropzone card clickable
+    dropzone.addEventListener('click', (e) => {
+      fileInput.click();
+    });
 
     ['dragenter', 'dragover'].forEach(eventName => {
       dropzone.addEventListener(eventName, (e) => {
@@ -232,7 +288,7 @@ class LunaAlignApp {
 
     img.src = imgData.dataUrl;
     name.textContent = imgData.name;
-    if (meta) meta.textContent = `${imgData.width}x${imgData.height} • ${imgData.size}`;
+    if (meta) meta.textContent = `${imgData.width}×${imgData.height} • ${imgData.size}`;
 
     dropzone.style.display = 'none';
     preview.classList.add('active');
@@ -314,7 +370,7 @@ class LunaAlignApp {
     if (state.pipeline.isRunning) return;
 
     if (!state.sourceImage || !state.referenceImage) {
-      this.showToast('Please provide both Source and Reference images before running pipeline', 'warning');
+      this.showToast('Please provide both Source and Reference imagery before executing pipeline', 'warning');
       return;
     }
 
@@ -328,7 +384,7 @@ class LunaAlignApp {
       Processing...
     `;
 
-    this.logTelemetry('Initializing ISRO lunar correspondence pipeline...');
+    this.logTelemetry('Initializing ISRO lunar correspondence pipeline...', 'sys');
 
     try {
       const telemetryResult = await ApiService.runPipeline(
@@ -337,14 +393,21 @@ class LunaAlignApp {
         state.metadata,
         (stepIndex, message) => {
           stateStore.updatePipeline({ currentStep: stepIndex });
-          this.logTelemetry(message);
+          const tag = stepIndex === 5 ? 'success' : 'stage';
+          this.logTelemetry(message, tag);
+
+          // Update vertical progress line
+          if (this.progressBar) {
+            const percent = Math.min(100, Math.round(((stepIndex + 1) / 6) * 100));
+            this.progressBar.style.height = `${percent}%`;
+          }
         }
       );
 
       stateStore.updateTelemetry(telemetryResult);
       stateStore.updatePipeline({ isRunning: false, currentStep: 5, hasExecuted: true });
 
-      this.showToast(`Registration Completed: RMSE ${telemetryResult.rmse} px | ${telemetryResult.inliers} Inliers`, 'success');
+      this.showToast(`Registration Complete: RMSE ${telemetryResult.rmse} px • ${telemetryResult.inliers} Inliers Verified`, 'success');
       
       // Refresh overlay
       if (this.overlayRenderer) {
@@ -358,18 +421,22 @@ class LunaAlignApp {
       this.sidebarRunBtn?.classList.remove('running');
       if (this.sidebarRunBtn) this.sidebarRunBtn.innerHTML = `
         <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-        Run Registration Pipeline
+        Run Pipeline
       `;
     }
   }
 
-  logTelemetry(message) {
+  logTelemetry(message, level = 'stage') {
     const time = new Date().toLocaleTimeString();
     const logBox = document.getElementById('terminalLogBox');
     if (logBox) {
       const entry = document.createElement('div');
       entry.className = 'log-entry';
-      entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-text">${message}</span>`;
+      entry.innerHTML = `
+        <span class="log-time">[${time}]</span>
+        <span class="log-tag ${level}">${level.toUpperCase()}</span>
+        <span class="log-text ${level === 'success' ? 'highlight' : ''}">${message}</span>
+      `;
       logBox.appendChild(entry);
       logBox.scrollTop = logBox.scrollHeight;
     }
@@ -387,11 +454,11 @@ class LunaAlignApp {
         stateStore.updateOverlay({ mode });
         if (this.overlayRenderer) this.overlayRenderer.render();
 
-        // Show/hide opacity slider based on mode
+        // Show/hide opacity vs flicker controls based on mode
         const opacityWrap = document.getElementById('opacitySliderWrap');
-        if (opacityWrap) {
-          opacityWrap.style.display = mode === 'alpha' ? 'flex' : 'none';
-        }
+        const flickerWrap = document.getElementById('flickerControlsWrap');
+        if (opacityWrap) opacityWrap.style.display = mode === 'alpha' ? 'flex' : 'none';
+        if (flickerWrap) flickerWrap.style.display = mode === 'flicker' ? 'flex' : 'none';
       });
     });
 
@@ -406,6 +473,32 @@ class LunaAlignApp {
         if (this.overlayRenderer) this.overlayRenderer.render();
       });
     }
+
+    // Quick Opacity Presets
+    document.querySelectorAll('.btn-preset-pill').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.btn-preset-pill').forEach(b => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        const op = parseFloat(e.currentTarget.dataset.opacity);
+        if (opacitySlider) opacitySlider.value = op;
+        if (opacityVal) opacityVal.textContent = `${Math.round(op * 100)}%`;
+        stateStore.updateOverlay({ opacity: op });
+        if (this.overlayRenderer) this.overlayRenderer.render();
+      });
+    });
+
+    // Flicker Rate Selector
+    document.querySelectorAll('.btn-rate-pill').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.btn-rate-pill').forEach(b => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        const rate = parseInt(e.currentTarget.dataset.rate) || 2;
+        stateStore.updateOverlay({ flickerFrequency: rate });
+        if (this.overlayRenderer) {
+          this.overlayRenderer.startFlickerLoop();
+        }
+      });
+    });
 
     // Toggle Inliers and Outliers
     const toggleInliers = document.getElementById('toggleInliersBtn');
@@ -435,7 +528,7 @@ class LunaAlignApp {
         return;
       }
       ApiService.exportReport(state.telemetry, state.metadata, state.sourceImage, state.referenceImage);
-      this.showToast('Telemetry report exported successfully', 'success');
+      this.showToast('Planetary telemetry report exported successfully', 'success');
     });
   }
 
@@ -455,9 +548,9 @@ class LunaAlignApp {
       }
     } else {
       indicator?.classList.remove('live');
-      if (statusText) statusText.textContent = 'Backend: Standby Mode';
+      if (statusText) statusText.textContent = 'Backend: Autonomous Standby';
       if (pill) {
-        pill.innerHTML = '<span class="pulse-ring"></span> STANDBY READY';
+        pill.innerHTML = '<span class="pulse-ring"></span> SYSTEM READY';
       }
     }
   }
@@ -513,7 +606,7 @@ class LunaAlignApp {
       align-items: center;
       gap: 10px;
       animation: fadeIn 0.3s ease;
-      max-width: 420px;
+      max-width: 440px;
       pointer-events: auto;
     `;
 
